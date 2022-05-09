@@ -235,7 +235,7 @@ class DeepTexture(object):
         
 
     
-    def buildTexture(self, features='all'):
+    def buildTexture(self, features='all',lossArray = None):
         '''
             This is the main function of this class this wraps everything related to the functionality
             of this project into it.
@@ -270,6 +270,90 @@ class DeepTexture(object):
         # Getting names of all the layers in the model
         all_layers = [layer.name for layer in model.layers[1:]]
 
+        if (lossArray == None):
+            # Checking which layers to be used for reference
+            if features == 'all':
+                feature_layers = all_layers
+            elif features == 'pool':
+                feature_layers = ['block1_pool', 'block2_pool', 'block3_pool', 'block4_pool', 'block5_pool']
+            elif isinstance(features, (list, tuple)):
+                for f in features:
+                    if f not in all_layers:
+                        flag = False
+                if flag:
+                    feature_layers = features
+                else:
+                    raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
+            else:
+                raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
+
+            self.layer_losses = {}
+            # Getting features for Texture Image as well as Synthesised Image
+            for layer_name in feature_layers:
+                layer_features = outputs_dict[layer_name]
+                tex_features = layer_features[0, :, :, :]
+                gen_features = layer_features[1, :, :, :]
+                tex_features = tf.expand_dims(tex_features, axis=0)
+                gen_features = tf.expand_dims(gen_features, axis=0)
+                
+                # Getting loss per layer
+                layer_loss = self.get_loss_per_layer(tex_features, gen_features)
+                self.layer_losses[layer_name] = layer_loss
+
+                # Calculating total loss
+                loss = loss + layer_loss
+            
+            #print("AYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY:",loss)
+            # Adding Variational Loss
+            var_loss = tf.image.total_variation(gen_img)
+            self.layer_losses["var_loss"] = var_loss
+            loss = loss + var_loss
+        else:
+            for i in lossArray.values():
+                loss = loss + i
+        
+        print("What is loss, baby don't hurt me:",loss)
+        # Calculating gradient
+        grads = tf.gradients(loss, gen_img)
+        print ("grads what u doin dude:",grads)
+        # Creating a list of loss and gradients 
+        outputs = [loss]
+        if isinstance(grads, (list, tuple)):
+            outputs += grads
+        else:
+            outputs.append(grads)
+
+        print(outputs)
+
+        # Using functions features of keras
+        self.f_outputs = K.function([gen_img], outputs)
+
+        # Initializing x with base image.    
+        self.xx = self.base_img
+
+        return self.runIterations(iterations = 10,save=0)
+
+
+    def buildTextureWithLoss(self, features='all'):
+        # Creating variables and placeholders
+        tex_img = K.variable(self.preprocess_image(self.tex_path))
+        gen_img = K.placeholder(shape=self.input_shape)
+
+        # Creating input_tensor by concatenating the two tensors
+        input_tensor = K.concatenate([tex_img, gen_img], axis=0)
+
+        # Getting model
+        model = VGG19(include_top=False, input_tensor=input_tensor, weights='imagenet')
+
+        # Creating output dictionary for the model.
+        outputs_dict = dict([(layer.name, layer.output) for layer in model.layers])
+
+        # Creating flag variable for future use
+        flag = True
+
+        # Getting names of all the layers in the model
+        all_layers = [layer.name for layer in model.layers[1:]]
+
         # Checking which layers to be used for reference
         if features == 'all':
             feature_layers = all_layers
@@ -287,8 +371,11 @@ class DeepTexture(object):
             raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
 
         self.layer_losses = {}
+        self.layer_loss_scores = {}
         # Getting features for Texture Image as well as Synthesised Image
         for layer_name in feature_layers:
+            # Initializing loss variable
+            loss = K.variable(0.)
             layer_features = outputs_dict[layer_name]
             tex_features = layer_features[0, :, :, :]
             gen_features = layer_features[1, :, :, :]
@@ -297,63 +384,63 @@ class DeepTexture(object):
             
             # Getting loss per layer
             layer_loss = self.get_loss_per_layer(tex_features, gen_features)
-            print("layer loss:      ",layer_loss)
+
             self.layer_losses[layer_name] = layer_loss
 
             # Calculating total loss
             loss = loss + layer_loss
+
+            # Calculating gradient
+            grads = tf.gradients(loss, gen_img)
+
+            # Creating a list of loss and gradients 
+            outputs = [loss]
+            if isinstance(grads, (list, tuple)):
+                outputs += grads
+            else:
+                outputs.append(grads)
+
+            # Using functions features of keras
+            self.f_outputs = K.function([gen_img], outputs)
+
+            # Initializing x with base image.    
+            self.xx = self.base_img
+            self.layer_loss_scores[layer_name] = self.runIterations(iterations=10,save=0)
             
         #print("AYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY:",loss)
-        # Adding Variational Loss
-        var_loss = tf.image.total_variation(gen_img)
-        self.layer_losses["var_loss"] = var_loss
-        loss = loss + var_loss
+
+        # Calculating Variational Loss
+        loss = tf.image.total_variation(gen_img)
+        self.layer_losses['var_loss'] = loss
+
+        # Calculating gradient
+        grads = tf.gradients(loss, gen_img)
+
+        # Creating a list of loss and gradients 
+        outputs = [loss]
+        if isinstance(grads, (list, tuple)):
+            outputs += grads
+        else:
+            outputs.append(grads)
+
+        # Using functions features of keras
+        self.f_outputs = K.function([gen_img], outputs)
+
+        # Initializing x with base image.    
+        self.xx = self.base_img
+        self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,save=0)
+
+        print("Your scores dude/dudess:",self.layer_loss_scores )
+
+        return self.layer_loss_scores
+
+        #self.layer_losses["var_loss"] = var_loss
+        #loss = loss + var_loss
+
 
         
-        # Calculating gradient
-        grads = tf.gradients(loss, gen_img)
-        # Creating a list of loss and gradients 
-        outputs = [loss]
-        if isinstance(grads, (list, tuple)):
-            outputs += grads
-        else:
-            outputs.append(grads)
 
-        # Using functions features of keras
-        self.f_outputs = K.function([gen_img], outputs)
-
-        # Initializing x with base image.    
-        self.xx = self.base_img
-        return loss.eval()
-
-    def buildTextureWithLoss(self,loss_):
-        # Creating variables and placeholders
-        tex_img = K.variable(self.preprocess_image(self.tex_path))
-        gen_img = K.placeholder(shape=self.input_shape)
-
-        loss = K.variable(0.)
-        loss = loss + loss_
-
-        # Creating input_tensor by concatenating the two tensors
-        input_tensor = K.concatenate([tex_img, gen_img], axis=0)
-
-        # Getting model
-        model = VGG19(include_top=False, input_tensor=input_tensor, weights='imagenet')
-
-        # Calculating gradient
-        grads = tf.gradients(loss, gen_img)
-        # Creating a list of loss and gradients 
-        outputs = [loss]
-        if isinstance(grads, (list, tuple)):
-            outputs += grads
-        else:
-            outputs.append(grads)
-
-        # Using functions features of keras
-        self.f_outputs = K.function([gen_img], outputs)
-
-        # Initializing x with base image.    
-        self.xx = self.base_img
+        
 
     def sv_img(self,iteration):
         # Deprocessing image
@@ -367,7 +454,7 @@ class DeepTexture(object):
         
 
         
-    def runIterations(self, iterations=50,printInterval=10):
+    def runIterations(self, iterations=50,printInterval=10,save=1):
         # Reducing total loss using fmin_l_bfgs_b function from scipy.
         # For more information regarding fmin_l_bfgs_b refer to https://www.google.co.in
         val = 99999999999999999
@@ -394,7 +481,8 @@ class DeepTexture(object):
         self.total_iterations+=iterations
         
         # Saving the generated image
-        self.sv_img(self.total_iterations)
+        if(save == 1):
+            self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))
 

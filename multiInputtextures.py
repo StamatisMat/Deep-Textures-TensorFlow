@@ -1,3 +1,4 @@
+import sys
 from deeptexturestf import DeepTexture
 from multiprocessing import Process
 from PIL import Image
@@ -12,35 +13,34 @@ finalLosses = {}
 instanceList = []
 scoreList    = []
 processList  = []
-global index
-index = 0
 
-@tf.function
 def getMinIndex():
     if len(losses)<1:
         return
-    min_ = losses[0]
+    index = 0
+    min_ = losses[index]
     for i in range(len(losses)):
         temp = losses[i]
         print("these are the tensors: ",temp)
         if (min_ > temp):
-            setIndex(i)
+            index = i
             min_ = temp
+    return index
 
-def setIndex(value):
-    global index
-    index = value
 
 def createLoss():
     
     for i in feature_layers:
         min_ = 999999999999999999999999999999
-
+        mintensor = None
         for j in instanceList:
-            if (j.layer_losses[i] < min_):
-                min_ = j.layer_losses[i]
-        
-        finalLosses[i] = min_
+            if (j.layer_loss_scores[i] < min_):
+                min_ = j.layer_loss_scores[i]
+                mintensor = j.layer_losses[i]
+
+        if (mintensor == None):
+            sys.err("Outstandingly large value for all losses, check texture image")
+        finalLosses[i] = mintensor
 
 
     return finalLosses
@@ -62,6 +62,11 @@ def buildTextures(features_ = 'pool'):
         print("AYYYYY2          ",varr)
         losses.append(varr)
         print(losses)
+
+def buildTexturesWithLoss(features = 'pool'):
+    for i in instanceList:
+        i.buildTextureWithLoss(features)
+        #print(layer_loss_scores)
 
 def runIterations(iterations_ = 2,pInterval = 10):
     for i in range(len(instanceList)):
@@ -168,19 +173,23 @@ if __name__ == '__main__':
     base_img = 'data/inputs/base_ruins.png'
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
-    # Building textures of each network
+
+    #Building full textures to determine which image to use as base
     buildTextures()
-    getMinIndex()
-    print("LMAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ",index)
-    final_tex_img = tex_list[index]
+    # Building textures to determine the loss of each layer 
+    buildTexturesWithLoss()
+    # Getting the min index to choose photo
+    minIndex = getMinIndex()
+    print("LMAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ",minIndex)
+    final_tex_img = tex_list[minIndex]
     createLoss()
 
     finalNetwork = DeepTexture( (name+"_final"), final_tex_img, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
-    finalNetwork.buildTextureWithLoss(sum(finalLosses.values()))
+    finalNetwork.buildTexture(lossArray = finalLosses )
     
-    finalNetwork.runIterations()
+    finalNetwork.runIterations(iterations = 100)
     
     
     
