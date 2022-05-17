@@ -1,4 +1,3 @@
-import sys
 from deeptexturestf import DeepTexture
 from multiprocessing import Process
 from PIL import Image
@@ -33,15 +32,14 @@ def createLoss():
     for i in feature_layers:
         min_ = 999999999999999999999999999999
         mintensor = None
-        for j in instanceList:
-            if (j.layer_loss_scores[i] < min_):
-                min_ = j.layer_loss_scores[i]
-                mintensor = j.layer_losses[i]
+        for j in range(len(instanceList)):
+            if (instanceList[j].layer_loss_scores[i] < min_):
+                min_ = instanceList[j].layer_loss_scores[i]
+                mintensor = j
 
         if (mintensor == None):
-            sys.err("Outstandingly large value for all losses, check texture image")
+            raise ValueError("Outstandingly large value for all losses, check texture image")
         finalLosses[i] = mintensor
-
 
     return finalLosses
 
@@ -179,12 +177,13 @@ if __name__ == '__main__':
     # Building textures to determine the loss of each layer 
     buildTexturesWithLoss()
     # Getting the min index to choose photo
-    minIndex = getMinIndex()
-    print("LMAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ",minIndex)
-    final_tex_img = tex_list[minIndex]
+    #minIndex = getMinIndex()
+    #print("LMAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ",minIndex)
+    #final_tex_img = tex_list[minIndex]
+
     createLoss()
 
-    finalNetwork = DeepTexture( (name+"_final"), final_tex_img, base_img_path = base_img)
+    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
     finalNetwork.buildTexture(lossArray = finalLosses )

@@ -82,7 +82,7 @@ class DeepTexture(object):
             print("Successfully loaded image:",base_img_path)
             self.base_img = self.preprocess_image(base_img_path) # If base_img_path is not `None` then use that image as base image
 
-        # Setting texture image path and prefix values
+        # Setting texture image path(s) and prefix values
         self.tex_path = tex_path
         self.gen_prefix = self.name+'_'+gen_prefix
         # Setting the value of input_shape
@@ -235,7 +235,7 @@ class DeepTexture(object):
         
 
     
-    def buildTexture(self, features='all',lossArray = None):
+    def buildTexture(self, features='all', lossIndices = None):
         '''
             This is the main function of this class this wraps everything related to the functionality
             of this project into it.
@@ -249,17 +249,42 @@ class DeepTexture(object):
         '''
 
         # Creating variables and placeholders
-        tex_img = K.variable(self.preprocess_image(self.tex_path))
+        if(isinstance(self.tex_path,list) and lossIndices != None):
+            raise ValueError("Error: You didn't provide any indices to determine which texture's layer's loss to use.")
+        if(isinstance(self.tex_path,list)):
+            print("Notice: Multiple textures detected, preprocessing images")
+            tex_img = []
+            for i in self.tex_path:
+                tex_img.append(K.variable(self.preprocess_image(i)))
+        else:
+            tex_img = K.variable(self.preprocess_image(self.tex_path))
         gen_img = K.placeholder(shape=self.input_shape)
 
-        # Creating input_tensor by concatenating the two tensors
-        input_tensor = K.concatenate([tex_img, gen_img], axis=0)
+        
+        # Creating input_tensor(s) by concatenating the two tensors
+        if(isinstance(tex_img,list)):
+            input_tensor = []
+            for i in tex_img:
+                input_tensor.append(K.concatenate([i, gen_img], axis=0))
+        else:
+            input_tensor = K.concatenate([tex_img, gen_img], axis=0)
 
-        # Getting model
-        model = VGG19(include_top=False, input_tensor=input_tensor, weights='imagenet')
+        # Getting model(s)
+        if(isinstance(input_tensor,list)):
+            model = []
+            for i in input_tensor:
+                model.append(VGG19(include_top=False, input_tensor=i, weights='imagenet'))
+        else:
+            model = VGG19(include_top=False, input_tensor=input_tensor, weights='imagenet')
 
         # Creating output dictionary for the model.
-        outputs_dict = dict([(layer.name, layer.output) for layer in model.layers])
+        if(isinstance(model,list)):
+            outputs_dict = []
+            for i in model:
+                outputs_dict.append(dict([(layer.name, layer.output) for layer in i.layers]))
+
+        else:
+            outputs_dict = dict([(layer.name, layer.output) for layer in model.layers])
 
         # Initializing loss variable
         loss = K.variable(0.)
@@ -268,52 +293,57 @@ class DeepTexture(object):
         flag = True
 
         # Getting names of all the layers in the model
-        all_layers = [layer.name for layer in model.layers[1:]]
+        if (isinstance(model,list)):
+            all_layers = [layer.name for layer in model[0].layers[1:]]
+        else:
+            all_layers = [layer.name for layer in model.layers[1:]]
 
-        if (lossArray == None):
-            # Checking which layers to be used for reference
-            if features == 'all':
-                feature_layers = all_layers
-            elif features == 'pool':
-                feature_layers = ['block1_pool', 'block2_pool', 'block3_pool', 'block4_pool', 'block5_pool']
-            elif isinstance(features, (list, tuple)):
-                for f in features:
-                    if f not in all_layers:
-                        flag = False
-                if flag:
-                    feature_layers = features
-                else:
-                    raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
+        # Checking which layers to be used for reference
+        if features == 'all':
+            feature_layers = all_layers
+        elif features == 'pool':
+            feature_layers = ['block1_pool', 'block2_pool', 'block3_pool', 'block4_pool', 'block5_pool']
+        elif isinstance(features, (list, tuple)):
+            for f in features:
+                if f not in all_layers:
+                    flag = False
+            if flag:
+                feature_layers = features
             else:
                 raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
-
-            self.layer_losses = {}
-            # Getting features for Texture Image as well as Synthesised Image
-            for layer_name in feature_layers:
-                layer_features = outputs_dict[layer_name]
-                tex_features = layer_features[0, :, :, :]
-                gen_features = layer_features[1, :, :, :]
-                tex_features = tf.expand_dims(tex_features, axis=0)
-                gen_features = tf.expand_dims(gen_features, axis=0)
-                
-                # Getting loss per layer
-                layer_loss = self.get_loss_per_layer(tex_features, gen_features)
-                self.layer_losses[layer_name] = layer_loss
-
-                # Calculating total loss
-                loss = loss + layer_loss
-            
-            #print("AYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY:",loss)
-            # Adding Variational Loss
-            var_loss = tf.image.total_variation(gen_img)
-            self.layer_losses["var_loss"] = var_loss
-            loss = loss + var_loss
         else:
-            for i in lossArray.values():
-                loss = loss + i
+            raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
+
+        self.layer_losses = {}
+
+
+        # Getting features for Texture Image as well as Synthesised Image
+        for layer_index in range(len(feature_layers)):
+            if(lossIndices == None):
+                layer_features = outputs_dict[feature_layers[layer_index]]
+            else:
+                layer_features = outputs_dict[lossIndices[layer_index]][feature_layers[layer_index]]
+            tex_features = layer_features[0, :, :, :]
+            gen_features = layer_features[1, :, :, :]
+            tex_features = tf.expand_dims(tex_features, axis=0)
+            gen_features = tf.expand_dims(gen_features, axis=0)
+                
+            # Getting loss per layer
+            layer_loss = self.get_loss_per_layer(tex_features, gen_features)
+            self.layer_losses[feature_layers[layer_index]] = layer_loss
+
+            # Calculating total loss
+            loss = loss + layer_loss
+
+        #print("AYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY:",loss)
+        # Adding Variational Loss
+        var_loss = tf.image.total_variation(gen_img)
+        self.layer_losses["var_loss"] = var_loss
+        loss = loss + var_loss
         
         print("What is loss, baby don't hurt me:",loss)
         # Calculating gradient
+        print("our loss:",loss,"our gen_img",gen_img)
         grads = tf.gradients(loss, gen_img)
         print ("grads what u doin dude:",grads)
         # Creating a list of loss and gradients 
@@ -477,11 +507,11 @@ class DeepTexture(object):
         # Getting ending time
         end_time = time.time()
 
+
         # Updating total iterations
-        self.total_iterations+=iterations
-        
         # Saving the generated image
         if(save == 1):
+            self.total_iterations+=iterations
             self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))
