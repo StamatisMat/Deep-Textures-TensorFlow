@@ -173,7 +173,7 @@ if __name__ == '__main__':
     initializeList(base_img,tex_list)
 
     #Building full textures to determine which image to use as base
-    buildTextures()
+    #buildTextures()
     # Building textures to determine the loss of each layer 
     buildTexturesWithLoss()
     # Getting the min index to choose photo
@@ -181,12 +181,12 @@ if __name__ == '__main__':
     #print("LMAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ",minIndex)
     #final_tex_img = tex_list[minIndex]
 
-    createLoss()
-
+    finalLosses = createLoss()
+    print (finalLosses)
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
-    finalNetwork.buildTexture(lossArray = finalLosses )
+    finalNetwork.buildTexture(features = "pool",lossIndices = finalLosses )
     
     finalNetwork.runIterations(iterations = 100)
     

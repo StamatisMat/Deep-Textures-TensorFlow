@@ -59,9 +59,11 @@ class DeepTexture(object):
         self.name = tex_name
         self.total_iterations = 0
 
-
         # Getting size of the input texture image.
-        self.width, self.height = image.load_img(tex_path).size
+        if(isinstance(tex_path,list)):
+            self.width, self.height = image.load_img(tex_path[0]).size    
+        else:
+            self.width, self.height = image.load_img(tex_path).size
 
         # Initializing loss value and gradient values as `None`
         self.loss_value = None
@@ -249,7 +251,7 @@ class DeepTexture(object):
         '''
 
         # Creating variables and placeholders
-        if(isinstance(self.tex_path,list) and lossIndices != None):
+        if(isinstance(self.tex_path,list) and lossIndices == None):
             raise ValueError("Error: You didn't provide any indices to determine which texture's layer's loss to use.")
         if(isinstance(self.tex_path,list)):
             print("Notice: Multiple textures detected, preprocessing images")
@@ -318,11 +320,14 @@ class DeepTexture(object):
 
 
         # Getting features for Texture Image as well as Synthesised Image
-        for layer_index in range(len(feature_layers)):
+        for layer_index in feature_layers:
+            # TODO: Check if feature layers is of same size as lossIndices
             if(lossIndices == None):
-                layer_features = outputs_dict[feature_layers[layer_index]]
+                layer_features = outputs_dict[layer_index]
             else:
-                layer_features = outputs_dict[lossIndices[layer_index]][feature_layers[layer_index]]
+                #print("here is outputsdict of",lossIndices[layer_index],":")
+                #print(outputs_dict[lossIndices[layer_index]])
+                layer_features = outputs_dict[lossIndices[layer_index]][layer_index]
             tex_features = layer_features[0, :, :, :]
             gen_features = layer_features[1, :, :, :]
             tex_features = tf.expand_dims(tex_features, axis=0)
@@ -330,7 +335,7 @@ class DeepTexture(object):
                 
             # Getting loss per layer
             layer_loss = self.get_loss_per_layer(tex_features, gen_features)
-            self.layer_losses[feature_layers[layer_index]] = layer_loss
+            self.layer_losses[layer_index] = layer_loss
 
             # Calculating total loss
             loss = loss + layer_loss
@@ -341,11 +346,11 @@ class DeepTexture(object):
         self.layer_losses["var_loss"] = var_loss
         loss = loss + var_loss
         
-        print("What is loss, baby don't hurt me:",loss)
+        #print("What is loss, baby don't hurt me:",loss)
         # Calculating gradient
-        print("our loss:",loss,"our gen_img",gen_img)
+        #print("our loss:",loss,"our gen_img",gen_img)
         grads = tf.gradients(loss, gen_img)
-        print ("grads what u doin dude:",grads)
+        #print ("grads what u doin dude:",grads)
         # Creating a list of loss and gradients 
         outputs = [loss]
         if isinstance(grads, (list, tuple)):
