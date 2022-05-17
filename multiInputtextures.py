@@ -208,5 +208,5 @@ if __name__ == '__main__':
     # Resuming by running more iterations
     #runIterations(100,10)
     # Printing final scores
-    printScores()
-    calculateOutput()
+    #printScores()
+    #calculateOutput()
