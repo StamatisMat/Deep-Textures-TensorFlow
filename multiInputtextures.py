@@ -152,7 +152,18 @@ def calculateOutput():
     new_image.save(file_name)
     return
 
-
+def getInput():
+    iterations = input("Give the number of iterations that you want the program to run. (Type 0 to exit.):")
+    
+    try:
+        iterations = int(iterations)
+        if (iterations < 0):
+            raise ValueError()
+    except:
+        print("Invalid number, Reminder: The number of iterations must be a positive integer")
+        iterations = getInput()
+    
+    return iterations
 
 
 if __name__ == '__main__':
@@ -188,11 +199,13 @@ if __name__ == '__main__':
     
     finalNetwork.buildTexture(features = "pool",lossIndices = finalLosses )
     
-    finalNetwork.runIterations(iterations = 100)
     
+    iterations_ = getInput()
     
-    
-    
+    while (iterations_>0):
+        finalNetwork.runIterations(iterations = iterations_)
+        iterations_ = getInput()
+
     
     
     
