@@ -48,7 +48,8 @@ class DeepTexture(object):
         ''' Method to initialize variables '''
 
         '''
-            @tex_path: Path to the `Texture Image`, the image at this location will be used as reference for 
+            @tex_name: Name that is printed on console
+            @tex_path: Path(s) to the `Texture Image`, the image at this location will be used as reference for 
                         texture synthesis
             @gen_prefix: Prefix associated with the output image's names
             @base_img_path: This is the path to an image that can be used as base image to generate texture on.
@@ -239,15 +240,14 @@ class DeepTexture(object):
     
     def buildTexture(self, features='all', lossIndices = None):
         '''
-            This is the main function of this class this wraps everything related to the functionality
-            of this project into it.
+            This is a helper function of this class this wraps everything related to the functionality
+            of this project into it, except the iteration running.
             @features: VGG19 layers to be selected for texture synthesisation, default being `all` taking 
                         every layer into consideration for synthesisation of the texture.
                         Other options being `pool` taking outputs only from pooling layers or a set of layers
                         named individually
             
-            @iterations: Number of times update on x should be carried out default being `500` iterations
-            This function does not return anything but saves the synthesised image after every updation.
+            @lossIndices: A dictionary which contains the index of a texture for every layer taken into account. key = layer, value = texture-index
         '''
 
         # Creating variables and placeholders
@@ -315,9 +315,10 @@ class DeepTexture(object):
                 raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
         else:
             raise ValueError('`features` should be either `all` or `pool` or a set of names from layer.name from model.layers')
-
+        if(len(lossIndices)!=len(feature_layers)):
+            raise ValueError("Losses are different from feature layers. This may be because you used different layers for the features of the compound network than the individuals")       
+        
         self.layer_losses = {}
-
 
         # Getting features for Texture Image as well as Synthesised Image
         for layer_index in feature_layers:
@@ -325,8 +326,6 @@ class DeepTexture(object):
             if(lossIndices == None):
                 layer_features = outputs_dict[layer_index]
             else:
-                #print("here is outputsdict of",lossIndices[layer_index],":")
-                #print(outputs_dict[lossIndices[layer_index]])
                 layer_features = outputs_dict[lossIndices[layer_index]][layer_index]
             tex_features = layer_features[0, :, :, :]
             gen_features = layer_features[1, :, :, :]
@@ -340,17 +339,14 @@ class DeepTexture(object):
             # Calculating total loss
             loss = loss + layer_loss
 
-        #print("AYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY:",loss)
         # Adding Variational Loss
         var_loss = tf.image.total_variation(gen_img)
         self.layer_losses["var_loss"] = var_loss
         loss = loss + var_loss
         
-        #print("What is loss, baby don't hurt me:",loss)
         # Calculating gradient
-        #print("our loss:",loss,"our gen_img",gen_img)
         grads = tf.gradients(loss, gen_img)
-        #print ("grads what u doin dude:",grads)
+
         # Creating a list of loss and gradients 
         outputs = [loss]
         if isinstance(grads, (list, tuple)):
@@ -440,6 +436,7 @@ class DeepTexture(object):
 
             # Initializing x with base image.    
             self.xx = self.base_img
+            #Running iterations to determine Layer loss
             self.layer_loss_scores[layer_name] = self.runIterations(iterations=10,save=0)
             
         #print("AYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY:",loss)
@@ -463,21 +460,19 @@ class DeepTexture(object):
 
         # Initializing x with base image.    
         self.xx = self.base_img
+        #Running iterations to determine Variational loss
         self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,save=0)
-
-        print("Your scores dude/dudess:",self.layer_loss_scores )
 
         return self.layer_loss_scores
 
-        #self.layer_losses["var_loss"] = var_loss
-        #loss = loss + var_loss
-
-
-        
-
-        
 
     def sv_img(self,iteration):
+        '''
+            This is a helper function of this class that exports the image to a file with its iteration in the filename
+
+            
+            @iteration: Number printed at filename
+        '''
         # Deprocessing image
         img = self.deprocess_image(self.xx.copy())
         self.fname = self.gen_prefix + '_at_iteration_%d.png' % iteration
@@ -489,42 +484,58 @@ class DeepTexture(object):
         
 
         
-    def runIterations(self, iterations=50,printInterval=10,save=1):
+    def runIterations(self, iterations=50, printInterval=50, save=1):
+        '''
+            This is the main function of this class that runs the iterations of the fmin_l_bfgs_b algorithm, then exports the result
+
+            
+            @iteration: Number printed at filename
+        '''
         # Reducing total loss using fmin_l_bfgs_b function from scipy.
-        # For more information regarding fmin_l_bfgs_b refer to https://www.google.co.in
+        # For more information regarding fmin_l_bfgs_b refer to https://www.google.com
         val = 99999999999999999
+        if(iterations<=0):
+            raise ValueError("You have provided an invalid amount of iterations. 'iterations' must be a positive integer.")
+        if(printInterval>iterations):
+            if(iterations/2>0):
+                printInterval = iterations/2
+            else:
+                printInterval = iterations
+        print("Starting %d iterations with %d print interval")
         start_time = time.time()
         for i in range(iterations):
-            #print('Start of iteration', i)
-                
 
             # Evalutaing for one iteration.
             self.xx, min_val, info = fmin_l_bfgs_b(func=self.get_loss, x0=self.xx.flatten(), fprime=self.get_grads, maxfun=10)
 
-            #print(max(x));
             if ((i+1)%printInterval==1):
                 print('%s: Current loss at iteration %d is: %d' %(self.name,self.total_iterations+i,min_val))
             # print(info)
-
-            #if(i%saveInterval==0): FOR SAVING REGULARLY
-        
+            
+            # Using Save value as interval of saving
+            if ( save>1 and (((i+1) % save) == 1)):
+                self.sv_img(self.total_iterations+i) 
+            
+            if (val<0.999999*min_val and min_val < 20000000000):
+                print("New value less than 0.0001%% better than the previous. Stopping")
+                iterations = i
+                break
+            else:
+                val=min_val
         
         # Getting ending time
         end_time = time.time()
 
 
         # Updating total iterations
-        # Saving the generated image
-        if(save == 1):
+        # Saving the generated image. The not part contains the case: "the last image is saved twice" 
+        if(save > 0 and not(save>1 and (((iterations+1) % save) == 1))):
             self.total_iterations+=iterations
             self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))
 
-                #if (val<0.999999*min_val and min_val < 20000000000):
-                #    break
-                #else:
-                #    val=min_val
+
         return min_val
 
     

@@ -13,19 +13,6 @@ instanceList = []
 scoreList    = []
 processList  = []
 
-def getMinIndex():
-    if len(losses)<1:
-        return
-    index = 0
-    min_ = losses[index]
-    for i in range(len(losses)):
-        temp = losses[i]
-        print("these are the tensors: ",temp)
-        if (min_ > temp):
-            index = i
-            min_ = temp
-    return index
-
 
 def createLoss():
     
@@ -50,17 +37,6 @@ def initializeList(base_path,tex_path_list):
         instanceList.append(DeepTexture( currentName, tex_path_list[i], base_img_path = base_path))
         scoreList.append(0)
 
-def initializeProcesses(iterations_ = 2):
-    for i in range(len(instanceList)):
-        processList.append(Process(target=instanceList[i].runIterations, args = (iterations_,) ))
-
-def buildTextures(features_ = 'pool'):
-    for i in instanceList:
-        varr = i.buildTexture(features = features_)
-        print("AYYYYY2          ",varr)
-        losses.append(varr)
-        print(losses)
-
 def buildTexturesWithLoss(features = 'pool'):
     for i in instanceList:
         i.buildTextureWithLoss(features)
@@ -69,12 +45,6 @@ def buildTexturesWithLoss(features = 'pool'):
 def runIterations(iterations_ = 2,pInterval = 10):
     for i in range(len(instanceList)):
         scoreList[i] = instanceList[i].runIterations(iterations = iterations_,printInterval = pInterval)
-
-def runIterationsParallel():
-    for i in processList:
-        i.start()
-    for i in processList:
-        i.join()
 
 def calculateWeightedScore():
     # Initialization of new Score list
@@ -166,31 +136,15 @@ def getInput():
     return iterations
 
 
-if __name__ == '__main__':
-    
-    # Here is a bunch of manual tests 
-
-    #tex = DeepTexture('tex1','data/inputs/tex_ruins2.png',base_img_path="data/inputs/base_ruins.png")
-    #tex.buildTexture(features='all')
-    #a = tex.runIterations(iterations = 2)
-    #print("for tex we have loss:",a)
-    #a = tex.runIterations(iterations = 4)
-    #print("for texx we have loss:",a)
-
+def ruins1():
     # Initialization of list of images to put through the program
     tex_list = ['data/inputs/tex_ruins2.png','data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png']
     base_img = 'data/inputs/base_ruins.png'
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
-
-    #Building full textures to determine which image to use as base
-    #buildTextures()
+    
     # Building textures to determine the loss of each layer 
     buildTexturesWithLoss()
-    # Getting the min index to choose photo
-    #minIndex = getMinIndex()
-    #print("LMAOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ",minIndex)
-    #final_tex_img = tex_list[minIndex]
 
     finalLosses = createLoss()
     print (finalLosses)
@@ -206,15 +160,23 @@ if __name__ == '__main__':
         finalNetwork.runIterations(iterations = iterations_)
         iterations_ = getInput()
 
+
+
+
+
+
+if __name__ == '__main__':
     
+    # Here is a bunch of manual tests 
+
+    #tex = DeepTexture('tex1','data/inputs/tex_ruins2.png',base_img_path="data/inputs/base_ruins.png")
+    #tex.buildTexture(features='all')
+    #a = tex.runIterations(iterations = 2)
+    #print("for tex we have loss:",a)
+    #a = tex.runIterations(iterations = 4)
+    #print("for texx we have loss:",a)
     
-    
-    
-    # Here is an attempt to use multithreading but is misused
-    #initializeProcesses(4)
-    #runIterationsParallel()
-    
-    # Runnning the iterations in series
+    # Runnning the iterations
     #runIterations(100,10)
     # Printing the scores
     #printScores()
@@ -223,3 +185,5 @@ if __name__ == '__main__':
     # Printing final scores
     #printScores()
     #calculateOutput()
+
+    ruins1()
