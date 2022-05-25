@@ -15,6 +15,9 @@ processList  = []
 
 
 def createLoss():
+    '''
+            This is a helper function of this program that populates the finalLosses dictionary with the best scoring losses of each texture
+    '''
     
     for i in feature_layers:
         min_ = 999999999999999999999999999999
@@ -32,21 +35,33 @@ def createLoss():
 
 
 def initializeList(base_path,tex_path_list):
+    '''
+            This is a simple helper function of this program that initializes and populates the instance list with DeepTexture instances
+    '''
     for i in range(len(tex_path_list)):
         currentName = name+str(i+1)
         instanceList.append(DeepTexture( currentName, tex_path_list[i], base_img_path = base_path))
         scoreList.append(0)
 
 def buildTexturesWithLoss(features = 'pool'):
+    '''
+            This is a helper function of this program that builds the textures in series
+    '''
     for i in instanceList:
-        i.buildTextureWithLoss(features)
+        i.buildTextureFull(features,withLoss=1)
         #print(layer_loss_scores)
 
 def runIterations(iterations_ = 2,pInterval = 10):
+    '''
+            This is a helper function of this program that runs DeepTexture iterations in series (regarding the instances)
+    '''
     for i in range(len(instanceList)):
         scoreList[i] = instanceList[i].runIterations(iterations = iterations_,printInterval = pInterval)
 
 def calculateWeightedScore():
+    '''
+            This is a helper function of this program that calculates the weighted score of each output photo, given the distinct scores
+    '''
     # Initialization of new Score list
     newScore = []
     # Getting min and max to convert from min <= oldscore <= max to offset <= newScore <= (1-offset) so the scores contribute at least 20% and at most 80%
@@ -74,12 +89,17 @@ def calculateWeightedScore():
         newScore[i]/=sum_
     return newScore
 
-# Pretty self explanatory
 def printScores():
+    '''
+            Pretty self explanatory
+    '''
     print("Average Scores are:",scoreList)
 
 
 def calculateOutput():
+    '''
+            This is a helper function that calculates the output image given the distinct output images and their score
+    '''
     # Getting the weighted scores that any pixel will be weighed, then added
     newScore = calculateWeightedScore()
 
@@ -123,6 +143,9 @@ def calculateOutput():
     return
 
 def getInput():
+    '''
+            This is a helper function that gets a positive input of iterations recursively for the program to run
+    '''
     iterations = input("Give the number of iterations that you want the program to run. (Type 0 to exit.):")
     
     try:
@@ -137,6 +160,9 @@ def getInput():
 
 
 def ruins1():
+    '''
+            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
+    '''
     # Initialization of list of images to put through the program
     tex_list = ['data/inputs/tex_ruins2.png','data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png']
     base_img = 'data/inputs/base_ruins.png'
@@ -147,12 +173,10 @@ def ruins1():
     buildTexturesWithLoss()
 
     finalLosses = createLoss()
-    print (finalLosses)
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
-    finalNetwork.buildTexture(features = "pool",lossIndices = finalLosses )
-    
+    finalNetwork.buildTextureFull(features = "pool",lossIndices = finalLosses)
     
     iterations_ = getInput()
     
