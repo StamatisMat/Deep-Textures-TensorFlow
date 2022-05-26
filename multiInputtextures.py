@@ -1,8 +1,6 @@
 from deeptexturestf import DeepTexture
 from multiprocessing import Process
 from PIL import Image
-import tensorflow as tf
-tf.compat.v1.disable_eager_execution()
 
 feature_layers = ['block1_pool', 'block2_pool', 'block3_pool', 'block4_pool', 'block5_pool','var_loss']
 name = 'tex'

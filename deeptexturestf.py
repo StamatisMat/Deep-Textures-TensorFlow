@@ -1,7 +1,7 @@
 '''
-    @author: Md Sarfarazul Haque
+    @author: Md Sarfarazul Haque, modifications by Stamatios Matziounis
     This file contains the main class, of this project, 
-    that synthesise a texture based on the provided texture.
+    that synthesise a texture based on the provided texture, or multiple textures.
     This Project is an implementation of following research paper:
     Citations{
         @online{
@@ -42,7 +42,7 @@ tf.compat.v1.disable_eager_execution()
 
 
 class DeepTexture(object):
-    ''' This is the main class that is going to synthesise textures based on given one '''
+    ''' This is the main class that is going to synthesise textures based on given ones '''
 
     def __init__(self, tex_name, tex_path, gen_prefix='result', base_img_path=None):
         ''' Method to initialize variables '''
@@ -374,6 +374,7 @@ class DeepTexture(object):
                         named individually
             
             @lossIndices: A dictionary which contains the index of a texture for every layer taken into account. key = layer, value = texture-index
+            @withLoss: A parameter that determines whether a texture will compute the losses for each seperate layer by running iterations. =1 for loss, =0 for normal use
         '''
 
         # Creating variables and placeholders
@@ -642,6 +643,8 @@ class DeepTexture(object):
 
             
             @iteration: Number printed at filename
+            @printInterval: The interval which a small report is printed
+            @save: A parameter that determines whether the iteration is going to return an image or more. 1 = save image at the end, >1 = save in intervals
         '''
         # Reducing total loss using fmin_l_bfgs_b function from scipy.
         # For more information regarding fmin_l_bfgs_b refer to https://www.google.com
@@ -697,4 +700,4 @@ if __name__ == "__main__":
     tex = DeepTexture('tex1','data/inputs/tex_ruins2.png',base_img_path="data/inputs/base_ruins.png")
     tex.buildTextureFull(features='all')
     a = tex.runIterations()
-    print("for tex we have loss:",a)
+    print("for tex  we have loss:",a)
