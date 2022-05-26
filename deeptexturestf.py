@@ -650,9 +650,9 @@ class DeepTexture(object):
             raise ValueError("You have provided an invalid amount of iterations. 'iterations' must be a positive integer.")
         if(printInterval>iterations):
             if(iterations/2>0):
-                printInterval = iterations/2
+                printInterval = int(iterations/2)
             else:
-                printInterval = iterations
+                printInterval = int(iterations)
         if(printInterval>0):
             print("Starting %d iterations with %d print interval" %(iterations,printInterval))
         start_time = time.time()
@@ -695,6 +695,6 @@ class DeepTexture(object):
 if __name__ == "__main__":
     # Sample run.
     tex = DeepTexture('tex1','data/inputs/tex_ruins2.png',base_img_path="data/inputs/base_ruins.png")
-    tex.buildTexture(features='all')
+    tex.buildTextureFull(features='all')
     a = tex.runIterations()
     print("for tex we have loss:",a)
