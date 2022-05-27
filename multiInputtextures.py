@@ -162,8 +162,8 @@ def ruins1():
             This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
     '''
     # Initialization of list of images to put through the program
-    tex_list = ['data/inputs/tex_ruins2.png','data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png']
-    base_img = 'data/inputs/base_ruins.png'
+    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
+    base_img = 'data/inputs/base_ruins2.png'
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
     
@@ -179,7 +179,7 @@ def ruins1():
     iterations_ = getInput()
     
     while (iterations_>0):
-        finalNetwork.runIterations(iterations = iterations_)
+        finalNetwork.runIterations(iterations = iterations_,save=100)
         iterations_ = getInput()
 
 

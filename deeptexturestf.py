@@ -510,7 +510,7 @@ class DeepTexture(object):
 
         if(withLoss == 1):
             #Running iterations to determine Variational loss
-            self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,save=0)
+            self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,printInterval=0,save=0)
             return self.layer_loss_scores
         else:
             return self.runIterations(iterations = 10,printInterval = 0,save=0)
@@ -591,7 +591,7 @@ class DeepTexture(object):
             # Initializing x with base image.    
             self.xx = self.base_img
             #Running iterations to determine Layer loss
-            self.layer_loss_scores[layer_name] = self.runIterations(iterations=10,save=0)
+            self.layer_loss_scores[layer_name] = self.runIterations(iterations=10,printInterval =0,save=0)
             
 
         # Calculating Variational Loss
@@ -669,7 +669,7 @@ class DeepTexture(object):
             # print(info)
             
             # Using Save value as interval of saving
-            if ( save>1 and (((i+1) % save) == 1)):
+            if ( save>1 and (((i+1) % save) == 0)):
                 self.sv_img(self.total_iterations+i) 
             
             if (val<0.999999*min_val and min_val < 20000000000):
@@ -684,9 +684,9 @@ class DeepTexture(object):
 
 
         # Updating total iterations
+        self.total_iterations+=iterations
         # Saving the generated image. The not part contains the case: "the last image is saved twice" 
-        if(save > 0 and not(save>1 and (((iterations+1) % save) == 1))):
-            self.total_iterations+=iterations
+        if(save > 0 and not(save>1 and (((iterations+1) % save) == 0))):
             self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))
