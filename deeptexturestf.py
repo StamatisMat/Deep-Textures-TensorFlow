@@ -484,7 +484,7 @@ class DeepTexture(object):
                 # Initializing x with base image.    
                 self.xx = self.base_img
                 #Running iterations to determine Layer loss
-                self.layer_loss_scores[layer_name] = self.runIterations(iterations=10,printInterval=0,save=0)
+                self.layer_loss_scores[layer_name] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)
                 loss = K.variable(0.)
 
         # Adding Variational Loss
@@ -510,10 +510,10 @@ class DeepTexture(object):
 
         if(withLoss == 1):
             #Running iterations to determine Variational loss
-            self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,printInterval=0,save=0)
+            self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)
             return self.layer_loss_scores
         else:
-            return self.runIterations(iterations = 10,printInterval = 0,save=0)
+            return self.runIterations(iterations = 10,countIterations=0,printInterval = 0,save=0)
 
 
 
@@ -614,7 +614,7 @@ class DeepTexture(object):
         # Initializing x with base image.    
         self.xx = self.base_img
         #Running iterations to determine Variational loss
-        self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,printInterval=0,save=0)
+        self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)
 
         return self.layer_loss_scores
 
@@ -637,7 +637,7 @@ class DeepTexture(object):
         
 
         
-    def runIterations(self, iterations=50, printInterval=50, save=1):
+    def runIterations(self, iterations=50,countIterations=1, printInterval=50, save=1):
         '''
             This is the main function of this class that runs the iterations of the fmin_l_bfgs_b algorithm, then exports the result
 
@@ -659,7 +659,7 @@ class DeepTexture(object):
         if(printInterval>0):
             print("Starting %d iterations with %d print interval" %(iterations,printInterval))
         start_time = time.time()
-        for i in range(iterations):
+        for i in range(iterations+1):
 
             # Evalutaing for one iteration.
             self.xx, min_val, info = fmin_l_bfgs_b(func=self.get_loss, x0=self.xx.flatten(), fprime=self.get_grads, maxfun=10)
@@ -669,7 +669,7 @@ class DeepTexture(object):
             # print(info)
             
             # Using Save value as interval of saving
-            if ( save>1 and (((i+1) % save) == 0)):
+            if ( save>1 and (((i+1) % save) == 1)):
                 self.sv_img(self.total_iterations+i) 
             
             if (val<0.999999*min_val and min_val < 20000000000):
@@ -684,9 +684,10 @@ class DeepTexture(object):
 
 
         # Updating total iterations
-        self.total_iterations+=iterations
+        if(countIterations==1):
+            self.total_iterations+=iterations
         # Saving the generated image. The not part contains the case: "the last image is saved twice" 
-        if(save > 0 and not(save>1 and (((iterations+1) % save) == 0))):
+        if(save > 0 and not(save>1 and (((iterations+2) % save) == 1))):
             self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))
@@ -697,7 +698,11 @@ class DeepTexture(object):
     
 if __name__ == "__main__":
     # Sample run.
-    tex = DeepTexture('tex1','data/inputs/tex_ruins2.png',base_img_path="data/inputs/base_ruins.png")
-    tex.buildTextureFull(features='all')
-    a = tex.runIterations()
-    print("for tex  we have loss:",a)
+    tex = DeepTexture('tex1','data/inputs/tex_ruins2.png',base_img_path="data/inputs/base_ruins222.png")
+    #tex.buildTextureFull(features='all')
+    #a = tex.runIterations()
+    
+    #tex.xx = tex.preprocess_image("data/inputs/base_ruins222.png")
+    #tex.sv_img(-12)
+
+    #print("for tex  we have loss:",a)

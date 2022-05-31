@@ -49,6 +49,14 @@ def buildTexturesWithLoss(features = 'pool'):
         i.buildTextureFull(features,withLoss=1)
         #print(layer_loss_scores)
 
+def buildTextures(features = 'pool'):
+    '''
+            This is a helper function of this program that builds the textures in series
+    '''
+    for i in instanceList:
+        i.buildTextureFull(features)
+        #print(layer_loss_scores)
+
 def runIterations(iterations_ = 2,pInterval = 10):
     '''
             This is a helper function of this program that runs DeepTexture iterations in series (regarding the instances)
@@ -163,7 +171,8 @@ def ruins1():
     '''
     # Initialization of list of images to put through the program
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
-    base_img = 'data/inputs/base_ruins2.png'
+    base_img = 'data/inputs/base_ruins222.png'
+
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
     
@@ -182,8 +191,21 @@ def ruins1():
         finalNetwork.runIterations(iterations = iterations_,save=100)
         iterations_ = getInput()
 
+def ruinsAVG():
+    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
+    base_img = 'data/inputs/base_ruins222.png'
 
+    # Initialization of the neural networks
+    initializeList(base_img,tex_list)
+    
+    # Building textures to determine the loss of each texture
+    buildTextures()
 
+    # Running iterations to determine the score of each neural network
+    runIterations()
+    
+    # Calculating output
+    calculateOutput()
 
 
 
@@ -208,4 +230,4 @@ if __name__ == '__main__':
     #printScores()
     #calculateOutput()
 
-    ruins1()
+    ruinsAVG()
