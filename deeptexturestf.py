@@ -378,8 +378,8 @@ class DeepTexture(object):
         '''
 
         # Creating variables and placeholders
-        if(isinstance(self.tex_path,list) and lossIndices == None):
-            raise ValueError("Error: You didn't provide any indices to determine which texture's layer's loss to use.")
+        #if(isinstance(self.tex_path,list) and lossIndices == None):
+        #   raise ValueError("Error: You didn't provide any indices to determine which texture's layer's loss to use.")
         if(isinstance(self.tex_path,list)):
             print("Notice: Multiple textures detected, preprocessing images")
             tex_img = []
@@ -452,8 +452,21 @@ class DeepTexture(object):
 
         # Getting features for Texture Image as well as Synthesised Image
         for layer_name in feature_layers:
-            if(lossIndices == None):
+            if(lossIndices == None and not(isinstance(model,list))):
                 layer_features = outputs_dict[layer_name]
+            elif (lossIndices==None):
+                for i in range(len(outputs_dict)):
+                    layer_features = outputs_dict[i][layer_name]
+                    tex_features = layer_features[0, :, :, :]
+                    gen_features = layer_features[1, :, :, :]
+                    tex_features = tf.expand_dims(tex_features, axis=0)
+                    gen_features = tf.expand_dims(gen_features, axis=0)
+                
+                    # Getting loss per layer for each
+                    layer_loss = self.get_loss_per_layer(tex_features, gen_features)
+                    self.layer_losses[layer_name] = layer_loss
+                    loss = loss + layer_loss
+                break
             else:
                 layer_features = outputs_dict[lossIndices[layer_name]][layer_name]
             tex_features = layer_features[0, :, :, :]
@@ -648,7 +661,7 @@ class DeepTexture(object):
         '''
         # Reducing total loss using fmin_l_bfgs_b function from scipy.
         # For more information regarding fmin_l_bfgs_b refer to https://www.google.com
-        val = 99999999999999999
+        val = np.inf
         if(iterations<=0):
             raise ValueError("You have provided an invalid amount of iterations. 'iterations' must be a positive integer.")
         if(printInterval>iterations):
@@ -666,18 +679,17 @@ class DeepTexture(object):
 
             if (printInterval>0 and (i+1)%printInterval==1):
                 print('%s: Current loss at iteration %d is: %d' %(self.name,self.total_iterations+i,min_val))
+                if ((val<0.99999*min_val and min_val < 20000000000) or min_val < val):
+                    print("New value less than 0.001%% better than the previous. Stopping")
+                    iterations = i
+                    break
+                else:
+                    val=min_val
             # print(info)
             
             # Using Save value as interval of saving
             if ( save>1 and (((i+1) % save) == 1)):
                 self.sv_img(self.total_iterations+i) 
-            
-            if (val<0.999999*min_val and min_val < 20000000000):
-                print("New value less than 0.0001%% better than the previous. Stopping")
-                iterations = i
-                break
-            else:
-                val=min_val
         
         # Getting ending time
         end_time = time.time()
@@ -687,7 +699,7 @@ class DeepTexture(object):
         if(countIterations==1):
             self.total_iterations+=iterations
         # Saving the generated image. The not part contains the case: "the last image is saved twice" 
-        if(save > 0 and not(save>1 and (((iterations+2) % save) == 1))):
+        if(save > 0 and not(save>1 and (((iterations+1) % save) == 1))):
             self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))

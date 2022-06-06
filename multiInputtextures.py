@@ -150,16 +150,16 @@ def calculateOutput():
 
 def getInput():
     '''
-            This is a helper function that gets a positive input of iterations recursively for the program to run
+            This is a helper function that gets a positive input of an integer recursively for the program to run
     '''
-    iterations = input("Give the number of iterations that you want the program to run. (Type 0 to exit.):")
+    iterations = input()
     
     try:
         iterations = int(iterations)
         if (iterations < 0):
             raise ValueError()
     except:
-        print("Invalid number, Reminder: The number of iterations must be a positive integer")
+        print("Invalid number, Reminder: The value must be a positive integer, try again: ",end = ' ')
         iterations = getInput()
     
     return iterations
@@ -185,13 +185,16 @@ def ruins1():
     
     finalNetwork.buildTextureFull(features = "pool",lossIndices = finalLosses)
     
+    print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
     iterations_ = getInput()
+
+
     
     while (iterations_>0):
-        finalNetwork.runIterations(iterations = iterations_,save=100)
+        finalNetwork.runIterations(iterations = iterations_,save=10)
         iterations_ = getInput()
 
-def ruinsAVG():
+def ruinsAVG1():
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
     base_img = 'data/inputs/base_ruins222.png'
 
@@ -206,6 +209,29 @@ def ruinsAVG():
     
     # Calculating output
     calculateOutput()
+
+
+
+
+
+def ruinsAVG2():
+    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
+    base_img = 'data/inputs/base_ruins222.png'
+
+    # Initialization of the neural networks
+    initializeList(base_img,tex_list)
+    
+    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
+    instanceList.append(finalNetwork)
+
+    finalNetwork.buildTextureFull(features = "pool")
+
+    print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+    iterations_ = getInput()
+    while (iterations_>0):
+        finalNetwork.runIterations(iterations = iterations_,save=10)
+        print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+        iterations_ = getInput()
 
 
 
@@ -230,4 +256,4 @@ if __name__ == '__main__':
     #printScores()
     #calculateOutput()
 
-    ruinsAVG()
+    ruinsAVG2()
