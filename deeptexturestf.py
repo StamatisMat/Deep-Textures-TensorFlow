@@ -679,8 +679,11 @@ class DeepTexture(object):
 
             if (printInterval>0 and (i+1)%printInterval==1):
                 print('%s: Current loss at iteration %d is: %d' %(self.name,self.total_iterations+i,min_val))
-                if ((val<0.99999*min_val and min_val < 20000000000) or min_val < val):
-                    print("New value less than 0.001%% better than the previous. Stopping")
+                if ((val<0.99999*min_val) or min_val >= val): # for inner boolean: and min_val < 20000000000 
+                    if(min_val >= val):
+                        print("New value not better than previous best. Stopping")
+                    else:
+                        print("New value less than 0.001% better than the previous. Stopping")
                     iterations = i
                     break
                 else:

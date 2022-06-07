@@ -216,11 +216,8 @@ def ruinsAVG1():
 
 def ruinsAVG2():
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
-    base_img = 'data/inputs/base_ruins222.png'
+    base_img = 'data/inputs/base_ruins22.png'
 
-    # Initialization of the neural networks
-    initializeList(base_img,tex_list)
-    
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
 
@@ -229,7 +226,7 @@ def ruinsAVG2():
     print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
     iterations_ = getInput()
     while (iterations_>0):
-        finalNetwork.runIterations(iterations = iterations_,save=10)
+        finalNetwork.runIterations(iterations = iterations_,printInterval = 10,save=20)
         print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
         iterations_ = getInput()
 
