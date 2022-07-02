@@ -31,10 +31,18 @@ def createLoss():
             raise ValueError("Outstandingly large value for all losses, check texture image")
         finalLosses[i] = mintensor
     print("final Loss indices:",finalLosses)
+    unusedImages = []
     for j in range(len(instanceList)):
         if j not in set(finalLosses.values()):
+            unusedImages.append(j)
+            # Updating the indices to remove unused textures from final texture
+            for i in finalLosses.keys():
+                if(finalLosses[i]>j):
+                    finalLosses[i] = finalLosses[i]-1
             print(instanceList[j].tex_path,"not used for final texture calculation. Check the clarity of the image.")
-    return finalLosses
+    
+
+    return finalLosses,unusedImages
 
 def calculateWeights():
     for i in feature_layers:
@@ -201,7 +209,7 @@ def ruins1():
     # Building textures to determine the loss of each layer 
     buildTexturesWithLoss()
 
-    finalLosses = createLoss()
+    finalLosses,unusedImages = createLoss()
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
@@ -229,7 +237,10 @@ def ruins2():
     # Building textures to determine the loss of each layer 
     buildTexturesWithLoss(features = "pool")
 
-    finalLosses = createLoss()
+    finalLosses,unusedImages = createLoss()
+    # Removing unused images via sorting the indices from last to first so the indices of the remaining images don't change.
+    for i in unusedImages.sort(reverse=True):
+        tex_list.pop(i)
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
