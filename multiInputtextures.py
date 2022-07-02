@@ -16,8 +16,10 @@ def createLoss():
     '''
             This is a helper function of this program that populates the finalLosses dictionary with the best scoring losses of each texture
     '''
-    
-    for i in feature_layers:
+    if(len(instanceList)<1):
+        return
+
+    for i in instanceList[0].layer_loss_scores.keys():
         min_ = 999999999999999999999999999999
         mintensor = None
         for j in range(len(instanceList)):
@@ -28,6 +30,23 @@ def createLoss():
         if (mintensor == None):
             raise ValueError("Outstandingly large value for all losses, check texture image")
         finalLosses[i] = mintensor
+    print("final Loss indices:",finalLosses)
+    for j in range(len(instanceList)):
+        if j not in set(finalLosses.values()):
+            print(instanceList[j].tex_path,"not used for final texture calculation. Check the clarity of the image.")
+    return finalLosses
+
+def calculateWeights():
+    for i in feature_layers:
+        old_scores = []
+        for j in range(len(instanceList)):
+            old_scores.append(instanceList[j].layer_loss_scores[i])
+
+        newScores = calculateWeightedScore(old_scores)
+
+        print("Old scores:",old_scores,"vs new scores:",newScores)
+
+        finalLosses[i] = newScores
 
     return finalLosses
 
@@ -64,7 +83,7 @@ def runIterations(iterations_ = 2,pInterval = 10):
     for i in range(len(instanceList)):
         scoreList[i] = instanceList[i].runIterations(iterations = iterations_,printInterval = pInterval)
 
-def calculateWeightedScore():
+def calculateWeightedScore(scoreList):
     '''
             This is a helper function of this program that calculates the weighted score of each output photo, given the distinct scores
     '''
@@ -84,7 +103,10 @@ def calculateWeightedScore():
     # The solution for the system [y/k,(1+y)/k] = [offset,1-offset] is: "y = (offset)/(1-2*offset)" and "k = 1/(1-2*offset)"
     # For convienience "m = 1/k", "y = offset/m" and "new_score =   m * (score_from_0_to_1 + y)"
     for i in scoreList:
-        newScore.append(m*(((i-min_)/(max_-min_))+l))
+        if(max_-min_== 0):
+            newScore.append(1/len(scoreList))
+        else:
+            newScore.append(m*(((i-min_)/(max_-min_))+l))
     #print("newScore before sum conversion:",newScore)
 
     # Getting the sum of the scores
@@ -107,7 +129,7 @@ def calculateOutput():
             This is a helper function that calculates the output image given the distinct output images and their score
     '''
     # Getting the weighted scores that any pixel will be weighed, then added
-    newScore = calculateWeightedScore()
+    newScore = calculateWeightedScore(scoreList)
 
     # Initialization of the created image
     images = []
@@ -171,7 +193,7 @@ def ruins1():
     '''
     # Initialization of list of images to put through the program
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
-    base_img = 'data/inputs/base_ruins222.png'
+    base_img = 'data/inputs/base_ruins22.png'
 
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
@@ -187,12 +209,40 @@ def ruins1():
     
     print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
     iterations_ = getInput()
-
-
     
     while (iterations_>0):
-        finalNetwork.runIterations(iterations = iterations_,save=10)
+        finalNetwork.runIterations(iterations = iterations_,save=50)
+        print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
         iterations_ = getInput()
+
+def ruins2():
+    '''
+            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
+    '''
+    # Initialization of list of images to put through the program
+    tex_list = ['data/inputs/ruins2/tex_ruins7.png','data/inputs/ruins2/tex_ruins2.png','data/inputs/ruins2/tex_ruins3.png','data/inputs/ruins2/tex_ruins4.png']
+    base_img = 'data/inputs/ruins2/base_ruins3.png'
+
+    # Initialization of the neural networks
+    initializeList(base_img,tex_list)
+    
+    # Building textures to determine the loss of each layer 
+    buildTexturesWithLoss(features = "pool")
+
+    finalLosses = createLoss()
+    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
+    instanceList.append(finalNetwork)
+    
+    finalNetwork.buildTextureFull(features = "pool",lossIndices = finalLosses,varLoss = 0)
+    
+    print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+    iterations_ = getInput()
+    
+    while (iterations_>0):
+        finalNetwork.runIterations(iterations = iterations_,save=100)
+        print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+        iterations_ = getInput()
+
 
 def ruinsAVG1():
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
@@ -230,6 +280,30 @@ def ruinsAVG2():
         print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
         iterations_ = getInput()
 
+def ruinsAVG3():
+    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
+    base_img = 'data/inputs/base_ruins22.png'
+
+    # Initialization of the neural networks
+    initializeList(base_img,tex_list)
+    
+    # Building textures to determine the loss of each layer 
+    buildTexturesWithLoss(features = "all")
+
+    finalWeights = calculateWeights()
+
+    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
+    instanceList.append(finalNetwork)
+    
+    finalNetwork.buildTextureFull(features = "pool",lossIndices = finalWeights)
+    
+    print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+    iterations_ = getInput()
+    
+    while (iterations_>0):
+        finalNetwork.runIterations(iterations = iterations_,save=50)
+        print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+        iterations_ = getInput()
 
 
 if __name__ == '__main__':
@@ -253,4 +327,4 @@ if __name__ == '__main__':
     #printScores()
     #calculateOutput()
 
-    ruinsAVG2()
+    ruins2()

@@ -59,6 +59,7 @@ class DeepTexture(object):
         # Initializing name and iteration index
         self.name = tex_name
         self.total_iterations = 0
+        self.val = np.inf
 
         # Getting size of the input texture image.
         if(isinstance(tex_path,list)):
@@ -364,7 +365,7 @@ class DeepTexture(object):
 
         return self.runIterations(iterations = 10,save=0)
 
-    def buildTextureFull(self,features = 'all',lossIndices=None,withLoss=0):
+    def buildTextureFull(self,features = 'all',lossIndices=None,withLoss=0,varLoss = 1):
         '''
             This is a helper function of this class that wraps everything related to the functionality
             of this project into it, except the iteration running.
@@ -467,6 +468,21 @@ class DeepTexture(object):
                     self.layer_losses[layer_name] = layer_loss
                     loss = loss + layer_loss
                 break
+            elif (isinstance(lossIndices[layer_name],list)):
+                weights = lossIndices[layer_name]
+                for i in range(len(outputs_dict)):
+                    layer_features = outputs_dict[i][layer_name]
+                    weight = K.variable(weights[i])
+                    tex_features = layer_features[0, :, :, :]
+                    gen_features = layer_features[1, :, :, :]
+                    tex_features = tf.expand_dims(tex_features, axis=0)
+                    gen_features = tf.expand_dims(gen_features, axis=0)
+                
+                    # Getting loss per layer for each
+                    layer_loss = weight*self.get_loss_per_layer(tex_features, gen_features)
+                    self.layer_losses[layer_name] = layer_loss
+                    loss = loss + layer_loss
+                break
             else:
                 layer_features = outputs_dict[lossIndices[layer_name]][layer_name]
             tex_features = layer_features[0, :, :, :]
@@ -501,9 +517,10 @@ class DeepTexture(object):
                 loss = K.variable(0.)
 
         # Adding Variational Loss
-        var_loss = tf.image.total_variation(gen_img)
-        self.layer_losses["var_loss"] = var_loss
-        loss = loss + var_loss
+        if(varLoss == 1):
+            var_loss = tf.image.total_variation(gen_img)
+            self.layer_losses["var_loss"] = var_loss
+            loss = loss + var_loss
         
         # Calculating gradient
         grads = tf.gradients(loss, gen_img)
@@ -521,7 +538,7 @@ class DeepTexture(object):
         # Initializing x with base image.    
         self.xx = self.base_img
 
-        if(withLoss == 1):
+        if(withLoss == 1 and varLoss == 1):
             #Running iterations to determine Variational loss
             self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)
             return self.layer_loss_scores
@@ -661,7 +678,6 @@ class DeepTexture(object):
         '''
         # Reducing total loss using fmin_l_bfgs_b function from scipy.
         # For more information regarding fmin_l_bfgs_b refer to https://www.google.com
-        val = np.inf
         if(iterations<=0):
             raise ValueError("You have provided an invalid amount of iterations. 'iterations' must be a positive integer.")
         if(printInterval>iterations):
@@ -676,23 +692,23 @@ class DeepTexture(object):
 
             # Evalutaing for one iteration.
             self.xx, min_val, info = fmin_l_bfgs_b(func=self.get_loss, x0=self.xx.flatten(), fprime=self.get_grads, maxfun=10)
-
+            
+            # Using Save value as interval of saving
+            if ( save>1 and (((i+1) % save) == 1)):
+                self.sv_img(self.total_iterations+i) 
+            
             if (printInterval>0 and (i+1)%printInterval==1):
                 print('%s: Current loss at iteration %d is: %d' %(self.name,self.total_iterations+i,min_val))
-                if ((val<0.99999*min_val) or min_val >= val): # for inner boolean: and min_val < 20000000000 
-                    if(min_val >= val):
+                if ((self.val<0.99999*min_val) or min_val >= self.val): # for inner boolean: and min_val < 20000000000 
+                    if(min_val >= self.val):
                         print("New value not better than previous best. Stopping")
                     else:
                         print("New value less than 0.001% better than the previous. Stopping")
                     iterations = i
                     break
                 else:
-                    val=min_val
+                    self.val=min_val
             # print(info)
-            
-            # Using Save value as interval of saving
-            if ( save>1 and (((i+1) % save) == 1)):
-                self.sv_img(self.total_iterations+i) 
         
         # Getting ending time
         end_time = time.time()

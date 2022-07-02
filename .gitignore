@@ -1,4 +1,5 @@
 *.png
+*.jpg
 data/
 __pycache__/
-test**/
+**test**/
