@@ -1,5 +1,4 @@
 from deeptexturestf import DeepTexture
-from multiprocessing import Process
 from PIL import Image
 
 feature_layers = ['block1_pool', 'block2_pool', 'block3_pool', 'block4_pool', 'block5_pool','var_loss']
@@ -16,9 +15,11 @@ def createLoss():
     '''
             This is a helper function of this program that populates the finalLosses dictionary with the best scoring losses of each texture
     '''
+    # if only one instance return 
     if(len(instanceList)<1):
-        return
+        return None
 
+    # Pick the best score out of the instance list
     for i in instanceList[0].layer_loss_scores.keys():
         min_ = 999999999999999999999999999999
         mintensor = None
@@ -28,20 +29,24 @@ def createLoss():
                 mintensor = j
 
         if (mintensor == None):
-            raise ValueError("Outstandingly large value for all losses, check texture image")
+            raise ValueError("Outstandingly large value for all losses, check texture image(s)")
         finalLosses[i] = mintensor
     print("final Loss indices:",finalLosses)
+
+    # Removing images that are not used in the file
     unusedImages = []
     for j in range(len(instanceList)):
         if j not in set(finalLosses.values()):
             unusedImages.append(j)
             # Updating the indices to remove unused textures from final texture
-            for i in finalLosses.keys():
-                if(finalLosses[i]>j):
-                    finalLosses[i] = finalLosses[i]-1
             print(instanceList[j].tex_path,"not used for final texture calculation. Check the clarity of the image.")
-    
 
+    # Updating indices
+    for i in finalLosses.keys():
+        for j in unusedImages:
+            if(finalLosses[i]>j):
+                finalLosses[i] = finalLosses[i]-1
+    
     return finalLosses,unusedImages
 
 def calculateWeights():
@@ -91,7 +96,7 @@ def runIterations(iterations_ = 2,pInterval = 10):
     for i in range(len(instanceList)):
         scoreList[i] = instanceList[i].runIterations(iterations = iterations_,printInterval = pInterval)
 
-def calculateWeightedScore(scoreList):
+def calculateWeightedScore(scoreList,offset = 0.2):
     '''
             This is a helper function of this program that calculates the weighted score of each output photo, given the distinct scores
     '''
@@ -100,8 +105,7 @@ def calculateWeightedScore(scoreList):
     # Getting min and max to convert from min <= oldscore <= max to offset <= newScore <= (1-offset) so the scores contribute at least 20% and at most 80%
     min_ = min(scoreList)
     max_ = max(scoreList)
-    # Initialization of offset and the subsequent variables for the conversion
-    offset = 0.2
+    # Initialization of the variables for the conversion
     m = 1-2*offset
     l = offset/m
     # Converting to [offset,1-offset] using  (1-2offset) * ( (x-min)/(max-min) + (offset)/(1-2*offset) ) 
@@ -228,8 +232,8 @@ def ruins2():
             This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
     '''
     # Initialization of list of images to put through the program
-    tex_list = ['data/inputs/ruins2/tex_ruins7.png','data/inputs/ruins2/tex_ruins2.png','data/inputs/ruins2/tex_ruins3.png','data/inputs/ruins2/tex_ruins4.png']
-    base_img = 'data/inputs/ruins2/base_ruins3.png'
+    tex_list = ['data/inputs/ruins4/tex_ruins1.png','data/inputs/ruins4/tex_ruins2.png','data/inputs/ruins4/tex_ruins6.png','data/inputs/ruins4/tex_ruins4.png']
+    base_img = 'data/inputs/ruins4/base_ruins3.png'
 
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
@@ -239,7 +243,8 @@ def ruins2():
 
     finalLosses,unusedImages = createLoss()
     # Removing unused images via sorting the indices from last to first so the indices of the remaining images don't change.
-    for i in unusedImages.sort(reverse=True):
+    unusedImages.sort(reverse=True)
+    for i in unusedImages:
         tex_list.pop(i)
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)

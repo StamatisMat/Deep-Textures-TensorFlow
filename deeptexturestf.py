@@ -24,12 +24,11 @@
 
 ''' Importing Packages '''
 import numpy as np 
-import matplotlib.pyplot as plt
 from scipy.optimize import fmin_l_bfgs_b
 from keras.preprocessing import image
 import time
 #from scipy.misc import imsave
-from keras.preprocessing.image import save_img as imsave
+from keras.utils import save_img as imsave
 from keras.applications import vgg19
 
 # This is a customized VGG19 network taken from fchollet implementation of VGG19
@@ -658,7 +657,7 @@ class DeepTexture(object):
         '''
         # Deprocessing image
         img = self.deprocess_image(self.xx.copy())
-        self.fname = self.gen_prefix + '_at_iteration_%d.png' % iteration
+        self.fname = 'data/results/' + self.gen_prefix + '_at_iteration_%d.png' % iteration
 
         # Saving the synthesised image
         imsave(self.fname, img)
@@ -667,7 +666,7 @@ class DeepTexture(object):
         
 
         
-    def runIterations(self, iterations=50,countIterations=1, printInterval=50, save=1):
+    def runIterations(self, iterations=50,countIterations=1, printInterval=100, save=1):
         '''
             This is the main function of this class that runs the iterations of the fmin_l_bfgs_b algorithm, then exports the result
 
