@@ -57,6 +57,7 @@ class DeepTexture(object):
         '''
         # Initializing name and iteration index
         self.name = tex_name
+        self.name2 = tex_name #this one is const
         self.total_iterations = 0
         self.val = np.inf
         self.saveLoc = saveLoc_
@@ -394,8 +395,11 @@ class DeepTexture(object):
 
                 # Initializing x with base image.    
                 self.xx = self.base_img
+                
+                self.name = self.name + "[" + layer_name + "]"
                 #Running iterations to determine Layer loss
                 self.layer_loss_scores[layer_name] = self.runIterations(iterations=20,countIterations=0,printInterval=0,save=0)
+                self.name = self.name2
                 loss = K.variable(0.)
 
         # Adding Variational Loss
@@ -422,10 +426,12 @@ class DeepTexture(object):
 
         if(withLoss == 1 and varLoss == 1):
             #Running iterations to determine Variational loss. Deprecated. Should remove.
+            self.name +="[var_loss]"
             self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)
+            self.name = self.name2
             return self.layer_loss_scores
         else:
-            return self.runIterations(iterations = 10,countIterations=0,printInterval = 0,save=0)
+            return self.runIterations(iterations = 20,countIterations=0,printInterval = 0,save=0)
 
     #Deprecated, merged into buildTextureFull()
     def buildTexture(self, features='all', lossIndices = None):
