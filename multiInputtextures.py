@@ -50,28 +50,40 @@ def createLoss():
     return finalLosses,unusedImages
 
 def calculateWeights():
+    '''
+            This is a helper function of this program that populates the finalLosses dictionary with the list of scores of each layer
+    '''
     for i in feature_layers:
         old_scores = []
+        
+        # Populating the old scores list by obtaining all scores from the same layer
         for j in range(len(instanceList)):
             old_scores.append(instanceList[j].layer_loss_scores[i])
-
+        
+        # Calculating the Weighted Score and storing it to the lexicon. For more info check function comments
         newScores = calculateWeightedScore(old_scores)
-
-        print("Old scores:",old_scores,"vs new scores:",newScores)
-
         finalLosses[i] = newScores
 
     return finalLosses
 
 
-def initializeList(base_path,tex_path_list):
+def initializeList(base_path,tex_path_list,saveLoc_ = None):
     '''
             This is a simple helper function of this program that initializes and populates the instance list with DeepTexture instances
     '''
     for i in range(len(tex_path_list)):
         currentName = name+str(i+1)
-        instanceList.append(DeepTexture( currentName, tex_path_list[i], base_img_path = base_path))
+        if(saveLoc_ == None):
+            instanceList.append(DeepTexture( currentName, tex_path_list[i], base_img_path = base_path))
+        else:
+            instanceList.append(DeepTexture( currentName, tex_path_list[i], base_img_path = base_path,saveLoc_ = saveLoc_))
         scoreList.append(0)
+
+def deleteList():
+    '''
+            This is a simple helper function of this program that frees up the memory taaken by the instance list
+    '''
+    del instanceList
 
 def buildTexturesWithLoss(features = 'pool'):
     '''
@@ -79,7 +91,6 @@ def buildTexturesWithLoss(features = 'pool'):
     '''
     for i in instanceList:
         i.buildTextureFull(features,withLoss=1)
-        #print(layer_loss_scores)
 
 def buildTextures(features = 'pool'):
     '''
@@ -87,7 +98,6 @@ def buildTextures(features = 'pool'):
     '''
     for i in instanceList:
         i.buildTextureFull(features)
-        #print(layer_loss_scores)
 
 def runIterations(iterations_ = 2,pInterval = 10):
     '''
@@ -136,7 +146,7 @@ def printScores():
     print("Average Scores are:",scoreList)
 
 
-def calculateOutput():
+def calculateOutput(saveLoc = 'results/'):
     '''
             This is a helper function that calculates the output image given the distinct output images and their score
     '''
@@ -178,7 +188,7 @@ def calculateOutput():
             pixels[i,j] = (sum_[0],sum_[1],sum_[2])
 
     # Creating the filename and saving the image
-    file_name = name+'_at_iteration %d.png'%(instanceList[0].total_iterations)
+    file_name = 'data/'+saveLoc+name+'_at_iteration %d.png'%(instanceList[0].total_iterations)
     new_image.save(file_name)
     return
 
@@ -199,47 +209,13 @@ def getInput():
     return iterations
 
 
-def ruins1():
-    '''
-            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
-    '''
-    # Initialization of list of images to put through the program
-    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
-    base_img = 'data/inputs/base_ruins22.png'
-
+# Structure of the Minimum method of texture enhancement
+def ruinsMin(tex_list,base_img, features_ = "pool"):
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
     
     # Building textures to determine the loss of each layer 
-    buildTexturesWithLoss()
-
-    finalLosses,unusedImages = createLoss()
-    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
-    instanceList.append(finalNetwork)
-    
-    finalNetwork.buildTextureFull(features = "pool",lossIndices = finalLosses)
-    
-    print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
-    iterations_ = getInput()
-    
-    while (iterations_>0):
-        finalNetwork.runIterations(iterations = iterations_,save=50)
-        print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
-        iterations_ = getInput()
-
-def ruins2():
-    '''
-            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
-    '''
-    # Initialization of list of images to put through the program
-    tex_list = ['data/inputs/ruins4/tex_ruins1.png','data/inputs/ruins4/tex_ruins2.png','data/inputs/ruins4/tex_ruins6.png','data/inputs/ruins4/tex_ruins4.png']
-    base_img = 'data/inputs/ruins4/base_ruins3.png'
-
-    # Initialization of the neural networks
-    initializeList(base_img,tex_list)
-    
-    # Building textures to determine the loss of each layer 
-    buildTexturesWithLoss(features = "pool")
+    buildTexturesWithLoss(features = features_)
 
     finalLosses,unusedImages = createLoss()
     # Removing unused images via sorting the indices from last to first so the indices of the remaining images don't change.
@@ -249,45 +225,83 @@ def ruins2():
     finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
     instanceList.append(finalNetwork)
     
-    finalNetwork.buildTextureFull(features = "pool",lossIndices = finalLosses,varLoss = 0)
+    # Building final texture
+    finalNetwork.buildTextureFull(features = features_,lossIndices = finalLosses,varLoss = 0,saveLoc_ = 'resultsMin/')
     
+    # Training the model
     print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
     iterations_ = getInput()
-    
     while (iterations_>0):
         finalNetwork.runIterations(iterations = iterations_,save=100)
         print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
         iterations_ = getInput()
 
-
-def ruinsAVG1():
-    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
-    base_img = 'data/inputs/base_ruins222.png'
-
-    # Initialization of the neural networks
-    initializeList(base_img,tex_list)
-    
-    # Building textures to determine the loss of each texture
-    buildTextures()
-
-    # Running iterations to determine the score of each neural network
-    runIterations()
-    
-    # Calculating output
-    calculateOutput()
-
-
-
-
-
-def ruinsAVG2():
+# Example application of the Minimum method
+def ruins1():
+    '''
+            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
+    '''
+    # Initialization of list of images to put through the program
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
     base_img = 'data/inputs/base_ruins22.png'
+    ruinsMin(tex_list,base_img)
 
-    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
+# Example application of the Minimum method    
+def ruins2():
+    '''
+            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
+    '''
+    # Initialization of list of images to put through the program
+    tex_list = ['data/inputs/ruins4/tex_ruins1.png','data/inputs/ruins4/tex_ruins2.png','data/inputs/ruins4/tex_ruins6.png','data/inputs/ruins4/tex_ruins4.png']
+    base_img = 'data/inputs/ruins4/base_ruins3.png'
+    ruinsMin(tex_list,base_img)
+   
+# Example application of the Minimum method
+def ruins3():
+    '''
+            This is a test program that runs a texture based out of 3 texture images and outputs the clean texture
+    '''
+    # Initialization of list of images to put through the program
+    tex_list = ['data/inputs/ruins111/tex_ruins1.png','data/inputs/ruins111/tex_ruins22.png']
+    base_img = 'data/inputs/ruins111/base_ruins.png'
+
+    ruinsMin(tex_list,base_img)
+
+# Structure of the Weighted Average method of texture enhancement
+def ruinsWeightAVG(tex_list,base_img,features_ ="pool"):
+    
+    # Initialization of the neural networks
+    initializeList(base_img,tex_list,saveLoc_='resultsWAVG2')
+    
+    # Building textures to determine the loss of each texture
+    buildTextures(features=features_)
+
+    # Running iterations to determine the score of each neural network
+    print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+    iterations_ = getInput()
+    while (iterations_>0):
+        runIterations(iterations_)    
+        print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
+        iterations_ = getInput()    
+    
+    # Calculating output
+    calculateOutput(saveLoc='resultsWAVG/')
+
+# Example application of the Weighted Average method
+def ruinsWeightAVGrun():
+    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
+    base_img = 'data/inputs/base_ruins222.png'
+    
+    ruinsWeightAVG(tex_list,base_img)
+
+
+
+# Structure of the Average method of texture enhancement
+def ruinsAVG(tex_list,base_img,features_ = "pool"):
+    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img,saveLoc_='resultsWAVG2')
     instanceList.append(finalNetwork)
 
-    finalNetwork.buildTextureFull(features = "pool")
+    finalNetwork.buildTextureFull(features = features_)
 
     print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
     iterations_ = getInput()
@@ -296,22 +310,28 @@ def ruinsAVG2():
         print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
         iterations_ = getInput()
 
-def ruinsAVG3():
+# Example application of the Average method
+def ruinsAVGrun():
     tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
     base_img = 'data/inputs/base_ruins22.png'
+    ruinsAVG(tex_list,base_img)
 
+
+
+# Structure of the Weighted Average 2 method of texture enhancement
+def ruinsWeightAVG2(tex_list,base_img,features_ = "pool"):
     # Initialization of the neural networks
     initializeList(base_img,tex_list)
     
     # Building textures to determine the loss of each layer 
-    buildTexturesWithLoss(features = "all")
+    buildTexturesWithLoss(features = features_)
 
     finalWeights = calculateWeights()
 
-    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img)
+    finalNetwork = DeepTexture( (name+"_final"), tex_list, base_img_path = base_img,saveLoc_='resultsWAVG2')
     instanceList.append(finalNetwork)
     
-    finalNetwork.buildTextureFull(features = "pool",lossIndices = finalWeights)
+    finalNetwork.buildTextureFull(features = features_,lossIndices = finalWeights)
     
     print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
     iterations_ = getInput()
@@ -320,6 +340,16 @@ def ruinsAVG3():
         finalNetwork.runIterations(iterations = iterations_,save=50)
         print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
         iterations_ = getInput()
+
+# Example application of Weighted Average 2 method
+def ruinsAVG3run():
+    tex_list = ['data/inputs/tex_ruins1.png','data/inputs/tex_ruins3.png','data/inputs/tex_ruins4.png']
+    base_img = 'data/inputs/base_ruins22.png'
+    ruinsWeightAVG2(tex_list,base_img)
+
+
+def evaluationOfMethods():
+    return
 
 
 if __name__ == '__main__':
@@ -343,4 +373,4 @@ if __name__ == '__main__':
     #printScores()
     #calculateOutput()
 
-    ruins2()
+    ruins3()
