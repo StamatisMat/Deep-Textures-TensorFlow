@@ -216,7 +216,7 @@ def getInput():
     
     return iterations
 
-def ruinsNormal(tex_img,base_img,features_ = "pool", iterations_ = None, save_ = 100):
+def ruinsNormal(tex_img,base_img,features_ = "pool", iterations_ = None,printInterval_ = 50, save_ = 100):
     print("             Normal Texture Method                 ")
     finalNetwork = DeepTexture( (name+"_final"), tex_img, base_img_path = base_img,saveLoc_='resultsNorm/')
     finalNetwork.buildTextureFull(features = features_)
@@ -226,11 +226,11 @@ def ruinsNormal(tex_img,base_img,features_ = "pool", iterations_ = None, save_ =
     if (iterations_== None):
         iterations_ = getInput()
         while (iterations_>0):
-            finalNetwork.runIterations(iterations = iterations_,printInterval = 10,save=20)
+            finalNetwork.runIterations(iterations = iterations_,printInterval = printInterval_,save=save_)
             print("Give the number of iterations that you want the program to run. (Type 0 to exit.):",end=" ")
             iterations_ = getInput()
     else:
-        finalNetwork.runIterations(iterations = iterations_,printInterval = 10,save=20)
+        finalNetwork.runIterations(iterations = iterations_,printInterval = printInterval_,save=save_)
     print("Resetting...")
     reset()
 
@@ -416,7 +416,7 @@ def ruinsAVG3run():
 def evaluationOfMethods1():
     tex_list = ['data/inputs/ruins1/tex_ruins1.png','data/inputs/ruins1/tex_ruins3.png','data/inputs/ruins1/tex_ruins4.png']
     base_img = 'data/inputs/ruins1/base_ruins.png'
-    #ruinsNormal(tex_list[0],base_img,iterations_ = 20000)
+    ruinsNormal(tex_list[0],base_img,iterations_ = 20000)
     ruinsMin(tex_list,base_img,iterations_ = 20000)
     ruinsWeightAVG(tex_list,base_img,iterations_ = 20000)
     ruinsAVG(tex_list,base_img,iterations_ = 20000)
