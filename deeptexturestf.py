@@ -1,5 +1,5 @@
 '''
-    @author: Md Sarfarazul Haque, modifications by Stamatios Matziounis
+    @author: Md Sarfarazul Haque, loads of modifications by Stamatios Matziounis
     This file contains the main class, of this project, 
     that synthesise a texture based on the provided texture, or multiple textures.
     This Project is an implementation of following research paper:
@@ -398,7 +398,7 @@ class DeepTexture(object):
                 
                 self.name = self.name + "[" + layer_name + "]"
                 #Running iterations to determine Layer loss
-                self.layer_loss_scores[layer_name] = self.runIterations(iterations=20,countIterations=0,printInterval=0,save=0)
+                self.layer_loss_scores[layer_name] = self.runIterations(iterations=20,countIterations=0,printInterval=0,save=0)[1]
                 self.name = self.name2
                 loss = K.variable(0.)
 
@@ -427,7 +427,7 @@ class DeepTexture(object):
         if(withLoss == 1 and varLoss == 1):
             #Running iterations to determine Variational loss. Deprecated. Should remove.
             self.name +="[var_loss]"
-            self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)
+            self.layer_loss_scores['var_loss'] = self.runIterations(iterations=10,countIterations=0,printInterval=0,save=0)[1]
             self.name = self.name2
             return self.layer_loss_scores
         else:
@@ -497,7 +497,7 @@ class DeepTexture(object):
             
             if (printInterval>0 and (i+1)%printInterval==1):
                 print('%s: Current loss at iteration %d is: %d' %(self.name,self.total_iterations+i,min_val))
-                if (self.val<0.99999*min_val): # for inner boolean: and min_val < 20000000000 
+                if (self.val<=1.00001*min_val):  
                     if(min_val >= self.val):
                         print("New value not better than previous best. Stopping")
                     else:
@@ -520,7 +520,8 @@ class DeepTexture(object):
             self.sv_img(self.total_iterations)
 
         print('%s: %d iterations completed in %ds' % (self.name,iterations, end_time - start_time))
-        return min_val
+        returnlist = [end_time-start_time,min_val]
+        return returnlist
 
     
 if __name__ == "__main__":
